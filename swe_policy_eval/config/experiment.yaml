@@ -1,0 +1,46 @@
+experiment: policy_comparison_v1
+
+seed: 1234                     # drives task sampling AND job ordering
+
+dataset:
+  name: SWE-bench/SWE-bench_Verified
+  split: test
+
+# Step 1: inclusion criteria (applied before sampling). null = no restriction.
+inclusion:
+  difficulty: null             # e.g. ["<15 min fix", "15 min - 1 hour"]
+  exclude_regex: null          # regex on instance_id, e.g. "^sympy"
+
+model:
+  class: openrouter
+  name: qwen/qwen3-coder-30b-a3b-instruct # change to your model; must be known to litellm
+  kwargs: {max_tokens: 8192}                              # merged over mini-swe-agent's defaults (e.g. {temperature: 0.0})
+
+# Budget ceiling (hard caps, enforced before every model call).
+limits:
+    # PLACEHOLDERS: set these from the cost of one real run (README step 8).
+  global_cap_usd: 30.0
+  per_run_cap_usd: 1.0         # identical for both policies
+  reserve_per_call_usd: 0.02   # worst-case cost of one call, added to every cap check
+  step_ceiling: 60             # identical hard ceiling on agent steps for both policies
+
+repeats: 1                     # step 5: raise to 2-3 once the pilot shows the budget allows it
+
+policies:
+  fixed:
+    rounds: 4
+    steps_per_round: 15        # 4 x 15 = 60 = step_ceiling
+  controller:
+    steps_per_round: 15
+    min_steps: 6
+    max_steps: 20
+    min_rounds_before_stop: 2
+    patience: 3                  # Table I: no measurable progress for 3 rounds -> stop
+    repeat_failure_limit: 2      # Table I: same failing test/error repeats for 2 rounds -> new diagnosis
+    cost_stop_frac: 0.9          # Table I: remaining budget below threshold -> 1 final attempt, then stop
+    final_attempt_on_low_budget: true
+    stop_on_empty_stagnation: true
+
+environment:
+  pull_timeout: 3600
+  run_args: ["--rm", "--platform", "linux/amd64"]

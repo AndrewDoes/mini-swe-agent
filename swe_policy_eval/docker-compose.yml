@@ -1,0 +1,23 @@
+services:
+  swe-policy-eval:
+    build: .
+    image: swe-policy-eval:latest
+    working_dir: /workspace
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - PYTHONUNBUFFERED=1
+      - MSWEA_SILENT_STARTUP=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./config:/workspace/config
+      - ./results:/workspace/results
+      - ./logs:/workspace/logs
+      - ./src:/workspace/src
+      - ./scripts:/workspace/scripts
+      - ./tests:/workspace/tests
+      - hf-cache:/root/.cache/huggingface
+
+volumes:
+  hf-cache:
